@@ -5,6 +5,7 @@ const VALUE_MASK: u64 = (1 << 48) - 1;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     F64,
+    I64,
     U64,
     Ptr,
 }
@@ -21,8 +22,9 @@ impl NaNBox {
     pub fn set_type(x: f64, nanbox_type: Type) -> f64 {
         let type_val = match nanbox_type {
             Type::F64 => 1,
-            Type::U64 => 2,
-            Type::Ptr => 3,
+            Type::I64 => 2,
+            Type::U64 => 3,
+            Type::Ptr => 4,
         };
         let mut bits = x.to_bits();
         bits = (bits & !TYPE_MASK) | (((TYPE_MASK >> 48) & type_val) << 48);
@@ -38,28 +40,45 @@ impl NaNBox {
         let bits = self.0.to_bits();
         match (bits & TYPE_MASK) >> 48 {
             1 => Ok(Type::F64),
-            2 => Ok(Type::U64),
-            3 => Ok(Type::Ptr),
+            2 => Ok(Type::I64),
+            3 => Ok(Type::U64),
+            4 => Ok(Type::Ptr),
             _ => Err(())
         }
     }
 
     #[inline(always)]
-    pub fn set_value(x: f64, value: u64) -> f64 {
+    pub fn set_value(x: f64, value: i64) -> f64 {
+        // let mut bits = x.to_bits();
+        // bits = (bits & !VALUE_MASK) | (value & VALUE_MASK);
+        // f64::from_bits(bits)
         let mut bits = x.to_bits();
-        bits = (bits & !VALUE_MASK) | (value & VALUE_MASK);
+        let sign_bit = (value.is_negative() as u64) << 63;
+        bits = (bits & !VALUE_MASK) | ((value.abs() as u64) & VALUE_MASK) | sign_bit;
         f64::from_bits(bits)
     }
 
     #[inline(always)]
-    fn get_value(&self) -> u64 {
+    fn get_value(&self) -> i64 {
+        // let bits = self.0.to_bits();
+        // bits & VALUE_MASK
         let bits = self.0.to_bits();
-        bits & VALUE_MASK
+        let value = (bits & VALUE_MASK) as i64;
+        if (bits & (1 << 63)) != 0 {
+            -value
+        } else {
+            value
+        }
     }
 
     #[inline(always)]
     pub fn is_f64(&self) -> bool {
         !self.0.is_nan()
+    }
+
+    #[inline(always)]
+    pub fn is_i64(&self) -> bool {
+        self.0.is_nan() && self.get_type() == Ok(Type::I64)
     }
 
     #[inline(always)]
@@ -78,13 +97,18 @@ impl NaNBox {
     }
 
     #[inline(always)]
-    pub fn as_u64(&self) -> u64 {
+    pub fn as_i64(&self) -> i64 {
         self.get_value()
     }
 
     #[inline(always)]
+    pub fn as_u64(&self) -> u64 {
+        self.get_value() as _
+    }
+
+    #[inline(always)]
     pub fn as_ptr(&self) -> *mut u8 {
-        self.get_value() as *mut u8
+        self.get_value() as _
     }
 
     #[inline(always)]
@@ -94,12 +118,17 @@ impl NaNBox {
 
     #[inline(always)]
     pub fn from_u64(value: u64) -> NaNBox {
-        NaNBox(Self::set_type(Self::set_value(Self::mk_inf(), value), Type::U64))
+        NaNBox(Self::set_type(Self::set_value(Self::mk_inf(), value as _), Type::U64))
+    }
+
+    #[inline(always)]
+    pub fn from_i64(value: i64) -> NaNBox {
+        NaNBox(Self::set_type(Self::set_value(Self::mk_inf(), value), Type::I64))
     }
 
     #[inline(always)]
     pub fn from_ptr(value: *mut u8) -> NaNBox {
-        NaNBox(Self::set_type(Self::set_value(Self::mk_inf(), value as u64), Type::Ptr))
+        NaNBox(Self::set_type(Self::set_value(Self::mk_inf(), value as _), Type::Ptr))
     }
 
     #[inline(always)]

@@ -49,9 +49,6 @@ impl NaNBox {
 
     #[inline(always)]
     pub fn set_value(x: f64, value: i64) -> f64 {
-        // let mut bits = x.to_bits();
-        // bits = (bits & !VALUE_MASK) | (value & VALUE_MASK);
-        // f64::from_bits(bits)
         let mut bits = x.to_bits();
         let sign_bit = (value.is_negative() as u64) << 63;
         bits = (bits & !VALUE_MASK) | ((value.abs() as u64) & VALUE_MASK) | sign_bit;
@@ -60,8 +57,6 @@ impl NaNBox {
 
     #[inline(always)]
     fn get_value(&self) -> i64 {
-        // let bits = self.0.to_bits();
-        // bits & VALUE_MASK
         let bits = self.0.to_bits();
         let value = (bits & VALUE_MASK) as i64;
         if (bits & (1 << 63)) != 0 {

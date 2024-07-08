@@ -11,8 +11,15 @@ pub enum Type {
     Ptr,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy)]
 pub struct NaNBox(pub f64);
+
+impl std::clone::Clone for NaNBox {
+    #[inline]
+    fn clone(&self) -> Self {
+        NaNBox(self.0)
+    }
+}
 
 impl std::fmt::Display for NaNBox {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -26,6 +33,7 @@ impl std::fmt::Display for NaNBox {
 }
 
 impl std::fmt::Debug for NaNBox {
+    #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self, f)
     }
